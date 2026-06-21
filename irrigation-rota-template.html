@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sudbury RFC — Irrigation Rota</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap');
+
+  :root {
+    --black: #0d0d0d;
+    --white: #f5f5f5;
+    --mid: #2a2a2a;
+    --line: #333;
+    --green: #4a7c3f;
+    --green-light: #6aad5e;
+    --amber: #c8890a;
+    --red: #b83232;
+    --unfilled: #1e1e1e;
+    --text-dim: #888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 20px 24px 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  header h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  header span {
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--line);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .week-nav button {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--white);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: inherit;
+  }
+
+  .week-nav button:hover { border-color: var(--white); }
+  .week-label { font-weight: 600; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: var(--green-light); }
+  .dot-amber { background: var(--amber); }
+  .dot-red { background: var(--red); }
+  .dot-empty { background: var(--line); }
+
+  .grid {
+    overflow-x: auto;
+    padding: 0 24px 40px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 680px;
+    margin-top: 4px;
+  }
+
+  thead th {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 12px 10px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  thead th:first-child { width: 90px; }
+
+  tbody tr { border-bottom: 1px solid var(--line); }
+  tbody tr:last-child { border-bottom: none; }
+
+  .time-cell {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dim);
+    padding: 14px 10px;
+    white-space: nowrap;
+    vertical-align: top;
+    line-height: 1.2;
+  }
+
+  .time-cell .duration {
+    display: block;
+    font-size: 11px;
+    color: #555;
+    font-weight: 400;
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+  }
+
+  .slot {
+    padding: 8px;
+    vertical-align: top;
+  }
+
+  .slot-inner {
+    background: var(--unfilled);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 12px 14px;
+    min-height: 72px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    position: relative;
+  }
+
+  .slot-inner:hover { border-color: #666; }
+
+  .slot-inner.confirmed {
+    border-color: var(--green);
+    background: rgba(74, 124, 63, 0.12);
+  }
+
+  .slot-inner.cant-do {
+    border-color: var(--red);
+    background: rgba(184, 50, 50, 0.08);
+    opacity: 0.75;
+  }
+
+  .slot-inner.needs-cover {
+    border-color: var(--amber);
+    background: rgba(200, 137, 10, 0.1);
+  }
+
+  .slot-inner.unfilled {
+    border-style: dashed;
+  }
+
+  .person-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #ffffff;
+    line-height: 1.1;
+  }
+
+  .slot-status {
+    font-size: 11px;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-confirmed { color: var(--green-light); }
+  .status-cant { color: var(--red); }
+  .status-cover { color: var(--amber); }
+  .status-unfilled { color: var(--text-dim); }
+
+  .restricted-badge {
+    position: absolute;
+    top: 7px;
+    right: 9px;
+    font-size: 9px;
+    color: #555;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .unfilled-prompt {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--mid);
+    border: 1px solid var(--line);
+    padding: 28px;
+    width: 320px;
+    max-width: 90vw;
+  }
+
+  .modal h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .modal .slot-info {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .modal select {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--line);
+    color: var(--white);
+    padding: 10px 12px;
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    margin-bottom: 20px;
+    appearance: none;
+  }
+
+  .modal-actions { display: flex; gap: 10px; }
+
+  .btn {
+    flex: 1;
+    padding: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: none;
+    color: var(--white);
+  }
+
+  .btn:hover { background: var(--line); }
+  .btn-confirm { border-color: var(--green); color: var(--green-light); }
+  .btn-confirm:hover { background: rgba(74,124,63,0.2); }
+  .btn-cantdo { border-color: var(--red); color: #e06060; }
+  .btn-cantdo:hover { background: rgba(184,50,50,0.2); }
+
+  .footer-note {
+    padding: 0 24px 24px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sudbury RFC — Irrigation Rota</h1>
+  <span>Pitch 1 &amp; Pitch 2 · Seed establishment</span>
+</header>
+
+<div class="week-nav">
+  <button>&#8592;</button>
+  <span class="week-label">Week of 23 June 2026</span>
+  <button>&#8594;</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot dot-green"></div> Confirmed</div>
+  <div class="legend-item"><div class="dot dot-amber"></div> Needs cover</div>
+  <div class="legend-item"><div class="dot dot-red"></div> Can't do</div>
+  <div class="legend-item"><div class="dot dot-empty"></div> Unfilled</div>
+</div>
+
+<div class="grid">
+  <table>
+    <thead>
+      <tr>
+        <th>Slot</th>
+        <th>Mon 23</th>
+        <th>Tue 24</th>
+        <th>Wed 25</th>
+        <th>Thu 26</th>
+        <th>Fri 27</th>
+        <th>Sat 28</th>
+        <th>Sun 29</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- 5am row -->
+      <tr>
+        <td class="time-cell">5:00am<span class="duration">runs → 9am</span></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Mon 23','5:00am – 9:00am')">
+          <div class="person-name">Charles</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Tue 24','5:00am – 9:00am')">
+          <div class="person-name">Shaun</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner needs-cover" onclick="openModal(this,'Wed 25','5:00am – 9:00am')">
+          <div class="person-name">Charles</div>
+          <div class="slot-status status-cover">Needs cover</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Thu 26','5:00am – 9:00am')">
+          <div class="person-name">Shaun</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Fri 27','5:00am – 9:00am')">
+          <div class="person-name">Gareth</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Sat 28','5:00am – 9:00am')">
+          <div class="person-name">Barry &amp; Sharon</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner unfilled" onclick="openModal(this,'Sun 29','5:00am – 9:00am')">
+          <div class="slot-status status-unfilled">Unfilled</div>
+          <div class="unfilled-prompt">Tap to claim</div>
+        </div></td>
+      </tr>
+
+      <!-- 9am row -->
+      <tr>
+        <td class="time-cell">9:00am<span class="duration">runs → 1pm</span></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Mon 23','9:00am – 1:00pm')">
+          <div class="person-name">Frazer</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Tue 24','9:00am – 1:00pm')">
+          <div class="person-name">Barry &amp; Sharon</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Wed 25','9:00am – 1:00pm')">
+          <div class="person-name">Gareth</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Thu 26','9:00am – 1:00pm')">
+          <div class="person-name">Frazer</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Fri 27','9:00am – 1:00pm')">
+          <div class="person-name">Barry &amp; Sharon</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Sat 28','9:00am – 1:00pm')">
+          <div class="person-name">Gareth</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Sun 29','9:00am – 1:00pm')">
+          <div class="person-name">Frazer</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+      </tr>
+
+      <!-- 1pm row -->
+      <tr>
+        <td class="time-cell">1:00pm<span class="duration">runs → 5pm</span></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Mon 23','1:00pm – 5:00pm')">
+          <div class="person-name">Gareth</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Tue 24','1:00pm – 5:00pm')">
+          <div class="person-name">Frazer</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner unfilled" onclick="openModal(this,'Wed 25','1:00pm – 5:00pm')">
+          <div class="slot-status status-unfilled">Unfilled</div>
+          <div class="unfilled-prompt">Tap to claim</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Thu 26','1:00pm – 5:00pm')">
+          <div class="person-name">Barry &amp; Sharon</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner cant-do" onclick="openModal(this,'Fri 27','1:00pm – 5:00pm')">
+          <div class="person-name">Frazer</div>
+          <div class="slot-status status-cant">Can't do — needs cover</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Sat 28','1:00pm – 5:00pm')">
+          <div class="person-name">Barry &amp; Sharon</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Sun 29','1:00pm – 5:00pm')">
+          <div class="person-name">Gareth</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+          <span class="restricted-badge">Daytime</span>
+        </div></td>
+      </tr>
+
+      <!-- 5pm row -->
+      <tr>
+        <td class="time-cell">5:00pm<span class="duration">runs → 9pm</span></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Mon 23','5:00pm – 9:00pm')">
+          <div class="person-name">Shaun</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Tue 24','5:00pm – 9:00pm')">
+          <div class="person-name">Charles</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Wed 25','5:00pm – 9:00pm')">
+          <div class="person-name">Shaun</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Thu 26','5:00pm – 9:00pm')">
+          <div class="person-name">Charles</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Fri 27','5:00pm – 9:00pm')">
+          <div class="person-name">Shaun</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner confirmed" onclick="openModal(this,'Sat 28','5:00pm – 9:00pm')">
+          <div class="person-name">Gareth</div>
+          <div class="slot-status status-confirmed">Confirmed</div>
+        </div></td>
+        <td class="slot"><div class="slot-inner unfilled" onclick="openModal(this,'Sun 29','5:00pm – 9:00pm')">
+          <div class="slot-status status-unfilled">Unfilled</div>
+          <div class="unfilled-prompt">Tap to claim</div>
+        </div></td>
+      </tr>
+
+    </tbody>
+  </table>
+</div>
+
+<div class="footer-note">
+  Daytime slots (9am–5pm) available to Frazer, Barry &amp; Sharon, and Gareth only. Early (5am) and evening (5pm) slots open to all.
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-time"></h2>
+    <div class="slot-info" id="modal-day"></div>
+    <label>Who are you?</label>
+    <select id="person-select">
+      <option value="">— Select your name —</option>
+      <option>Frazer</option>
+      <option>Barry &amp; Sharon</option>
+      <option>Charles</option>
+      <option>Shaun</option>
+      <option>Gareth</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-confirm" onclick="closeModal()">✓ I can do this</button>
+      <button class="btn btn-cantdo" onclick="closeModal()">✗ Can't do it</button>
+    </div>
+    <br>
+    <button class="btn" onclick="closeModal()" style="width:100%; margin-top:6px;">Cancel</button>
+  </div>
+</div>
+
+<script>
+  function openModal(el, day, time) {
+    document.getElementById('modal-day').textContent = day;
+    document.getElementById('modal-time').textContent = time;
+    document.getElementById('modal').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+    document.getElementById('person-select').value = '';
+  }
+  document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+</script>
+
+</body>
+</html>
